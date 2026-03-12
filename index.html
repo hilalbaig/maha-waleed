@@ -164,7 +164,7 @@
         },
         hosts: [
             { name: "Contact 1", phone: "03119048477", whatsapp: "03119048477" },
-            { name: "Contact 2", phone: "03349066070", whatsapp: "03349066070" }
+            { name: "Sadiq Khan", phone: "+92 316 9049534", whatsapp: "+92 316 9049534" }
         ]
       };
 
@@ -223,14 +223,20 @@
               if (!sessionStorage.getItem('visited')) {
                   db.collection('stats').doc('engagement').set({
                       visits: firebase.firestore.FieldValue.increment(1)
-                  }, { merge: true }).catch(e => console.log("Offline/Error", e));
+                  }, { merge: true }).catch(e => console.error("Stats Reaction Error:", e));
                   sessionStorage.setItem('visited', 'true');
               }
 
               // Listen for changes
               const unsub = db.collection('stats').doc('engagement').onSnapshot(doc => {
                   if (doc.exists) setCounts(doc.data());
-              }, (err) => console.log(err));
+              }, (err) => {
+                  console.error("Firestore Stats Error:", err);
+                  // If it's a permission error, it's likely rules or missing DB
+                  if (err.code === 'permission-denied') {
+                      console.warn("Please check your Firebase Firestore Security Rules.");
+                  }
+              });
               
               return () => unsub && unsub();
           }, []);
@@ -410,10 +416,20 @@
         };
 
         useEffect(() => {
-          if (!db) { setIsOfflineMode(true); loadLocalMessages(); return; }
+          if (!db) { 
+            console.warn("Firebase DB not initialized.");
+            setIsOfflineMode(true); 
+            loadLocalMessages(); 
+            return; 
+          }
           const unsubscribe = db.collection('guestbook').orderBy('createdAt', 'desc').limit(50).onSnapshot(snapshot => {
               setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-            }, () => { setIsOfflineMode(true); loadLocalMessages(); });
+              setIsOfflineMode(false);
+            }, (err) => { 
+              console.error("Firestore Guestbook Error:", err);
+              setIsOfflineMode(true); 
+              loadLocalMessages(); 
+            });
           return () => unsubscribe();
         }, []);
 
@@ -425,9 +441,14 @@
           
           try {
             if (db && !isOfflineMode) {
-              await db.collection('guestbook').add({ name: name.trim(), message: msg.trim(), createdAt: new Date().toISOString() });
-            } else { throw new Error('Offline'); }
+              await db.collection('guestbook').add({ 
+                name: name.trim(), 
+                message: msg.trim(), 
+                createdAt: new Date().toISOString() 
+              });
+            } else { throw new Error('Offline or DB not connected'); }
           } catch (error) {
+            console.error("Post Message Error:", error);
             setIsOfflineMode(true);
             const saved = JSON.parse(localStorage.getItem('guestbook_local') || '[]');
             localStorage.setItem('guestbook_local', JSON.stringify([newMsg, ...saved]));
@@ -480,8 +501,8 @@
       const ZeenatJewellersAd = () => (
         <div className="mt-16 mb-8 px-6 py-8 bg-gradient-to-br from-amber-50 to-rose-50 rounded-2xl border border-amber-200/50 shadow-inner max-w-sm mx-auto text-center relative overflow-hidden group">
           {/* Decorative background elements */}
-          <div className="absolute -top-4 -right-4 w-16 h-16 bg-gold-200/20 rounded-full blur-xl group-hover:bg-gold-300/30 transition-all duration-700"></div>
-          <div className="absolute -bottom-4 -left-4 w-20 h-20 bg-rose-200/20 rounded-full blur-xl group-hover:bg-rose-300/30 transition-all duration-700"></div>
+          <div className="absolute -top-4 -right-4 w-16 h-16 bg-gold-200/10 rounded-full blur-2xl group-hover:bg-gold-300/20 transition-all duration-700 pointer-events-none"></div>
+          <div className="absolute -bottom-4 -left-4 w-20 h-20 bg-rose-200/10 rounded-full blur-2xl group-hover:bg-rose-300/20 transition-all duration-700 pointer-events-none"></div>
           
           <div className="relative z-10 flex flex-col items-center">
             {/* ZJ Logo */}
