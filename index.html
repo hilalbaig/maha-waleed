@@ -110,22 +110,21 @@
 
         // --- FIREBASE CONFIG ---
         const firebaseConfig = {
-            projectId: "gen-lang-client-0696078845",
-            appId: "1:770757583223:web:4171ba14cbf6f2df3f4172",
-            apiKey: "AIzaSyBI-E7px9j9GUiZ67iRXJ53GhTAwSC_rXM",
-            authDomain: "gen-lang-client-0696078845.firebaseapp.com",
-            storageBucket: "gen-lang-client-0696078845.firebasestorage.app",
-            messagingSenderId: "770757583223",
-            measurementId: ""
+            apiKey: "AIzaSyATx7BPZ6xWv6eawg3oP_9BEKDkIZ8PNPY",
+            authDomain: "maha-waleed.firebaseapp.com",
+            databaseURL: "https://maha-waleed-default-rtdb.firebaseio.com",
+            projectId: "maha-waleed",
+            storageBucket: "maha-waleed.firebasestorage.app",
+            messagingSenderId: "672540737351",
+            appId: "1:672540737351:web:0b7aacbd799aba27d45662",
+            measurementId: "G-LQ6R7EMMM5"
         };
-        const firestoreDatabaseId = "ai-studio-f57fcc4b-b821-4cc3-b8b2-f87d893542df";
 
         // Initialize Firebase
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         }
-        // Use the named database
-        const db = firebase.app().firestore(firestoreDatabaseId);
+        const db = firebase.firestore();
 
         // --- UTILS ---
         const cn = (...classes) => classes.filter(Boolean).join(' ');
@@ -474,6 +473,16 @@
 
         const InvitationCard = () => {
             const [timeLeft, setTimeLeft] = useState({ d: 0, h: 0, m: 0, s: 0 });
+            const [loveCount, setLoveCount] = useState(0);
+
+            useEffect(() => {
+                const unsubscribe = db.collection('stats').doc('engagement').onSnapshot((doc) => {
+                    if (doc.exists) {
+                        setLoveCount(doc.data().loves || 0);
+                    }
+                });
+                return () => unsubscribe();
+            }, []);
 
             useEffect(() => {
                 const t = setInterval(() => {
@@ -648,7 +657,18 @@
                         </div>
                     </motion.div>
 
-                    <div className="fixed bottom-10 right-10 z-50">
+                    <div className="fixed bottom-10 right-10 z-50 flex flex-col items-center gap-2">
+                        <AnimatePresence>
+                            {loveCount > 0 && (
+                                <motion.span 
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="bg-forest text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg border border-gold/20"
+                                >
+                                    {loveCount}
+                                </motion.span>
+                            )}
+                        </AnimatePresence>
                         <motion.button 
                             whileHover={{ scale: 1.1, rotate: 5 }}
                             whileTap={{ scale: 0.9 }}
