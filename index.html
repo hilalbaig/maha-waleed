@@ -126,6 +126,25 @@
         }
         const db = firebase.firestore();
 
+        // Connection Test & Debugging
+        db.collection('stats').doc('engagement').get()
+            .then(() => {
+                console.log("Firestore connected successfully");
+            })
+            .catch(err => {
+                console.error("Firestore connection failed:", err);
+                const display = document.getElementById('error-display');
+                if (display) {
+                    display.innerHTML += `<br/><div style="background: rgba(239, 68, 68, 0.1); padding: 10px; border-radius: 4px; margin-top: 10px;">
+                        <strong>Firebase Connection Error:</strong><br/>
+                        ${err.message}<br/>
+                        <p style="font-size: 0.7rem; margin-top: 5px; opacity: 0.8;">
+                            Make sure Firestore is enabled in your Firebase Console for project "maha-waleed" and rules allow read/write.
+                        </p>
+                    </div>`;
+                }
+            });
+
         // --- UTILS ---
         const cn = (...classes) => classes.filter(Boolean).join(' ');
 
