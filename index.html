@@ -47,11 +47,11 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Framer Motion -->
+    <!-- Framer Motion (UMD name is Motion) -->
     <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
 
     <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide@0.263.0/dist/umd/lucide.min.js"></script>
 
     <!-- Canvas Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -67,6 +67,7 @@
             background-color: #f5f2ed;
             color: #1a1a1a;
             -webkit-font-smoothing: antialiased;
+            margin: 0;
         }
 
         .custom-scrollbar::-webkit-scrollbar {
@@ -84,11 +85,16 @@
     </style>
 </head>
 <body class="bg-paper text-forest antialiased min-h-screen">
-    <div id="root"></div>
+    <div id="root">
+        <div style="display: flex; justify-content: center; align-items: center; height: 100vh; font-family: serif; color: #D4AF37;">
+            Loading Invitation...
+        </div>
+    </div>
 
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo } = React;
-        const { motion, AnimatePresence } = FramerMotion;
+        // Framer Motion UMD exposes 'Motion'
+        const { motion, AnimatePresence } = window.Motion || window.FramerMotion || { motion: (props) => <div {...props} />, AnimatePresence: ({children}) => children };
 
         // --- FIREBASE CONFIG ---
         const firebaseConfig = {
@@ -103,12 +109,13 @@
         const firestoreDatabaseId = "ai-studio-f57fcc4b-b821-4cc3-b8b2-f87d893542df";
 
         // Initialize Firebase
+        let app;
         if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
+            app = firebase.initializeApp(firebaseConfig);
+        } else {
+            app = firebase.app();
         }
-        const db = firebase.firestore();
-        // Note: In v8 compat, named databases are handled differently or might not be supported in the same way.
-        // However, for this project, we'll assume the default database or the one configured.
+        const db = app.firestore(firestoreDatabaseId);
 
         // --- UTILS ---
         const cn = (...classes) => classes.filter(Boolean).join(' ');
@@ -116,27 +123,35 @@
         // --- LUCIDE ICON WRAPPER ---
         const Icon = ({ name, size = 24, className = "" }) => {
             const iconRef = useRef(null);
+            
             useEffect(() => {
-                if (iconRef.current) {
-                    const icon = lucide.icons[name];
-                    if (icon) {
-                        const svg = lucide.createIcons({
-                            icons: { [name]: icon },
-                            attrs: {
-                                stroke: 'currentColor',
-                                'stroke-width': 2,
-                                'stroke-linecap': 'round',
-                                'stroke-linejoin': 'round',
-                                width: size,
-                                height: size,
-                                class: className
-                            }
-                        });
+                if (iconRef.current && window.lucide) {
+                    // Create a temporary element to host the icon
+                    const temp = document.createElement('div');
+                    temp.innerHTML = `<i data-lucide="${name}"></i>`;
+                    window.lucide.createIcons({
+                        icons: { [name]: window.lucide.icons[name] },
+                        attrs: {
+                            stroke: 'currentColor',
+                            'stroke-width': 2,
+                            'stroke-linecap': 'round',
+                            'stroke-linejoin': 'round',
+                            width: size,
+                            height: size,
+                            class: className
+                        },
+                        nameAttr: 'data-lucide'
+                    });
+                    // This is a bit hacky for React, but works for standalone
+                    const svg = temp.querySelector('svg');
+                    if (svg && iconRef.current) {
+                        iconRef.current.innerHTML = '';
+                        iconRef.current.appendChild(svg);
                     }
                 }
             }, [name, size, className]);
 
-            return <i data-lucide={name} className={className} style={{ width: size, height: size, display: 'inline-block' }}></i>;
+            return <span ref={iconRef} className={cn("inline-block", className)} style={{ width: size, height: size }}></span>;
         };
 
         // --- CONSTANTS ---
