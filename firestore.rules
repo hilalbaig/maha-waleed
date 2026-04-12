@@ -1,0 +1,69 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: guestbook
+    // Document ID: auto-generated
+    // Fields:
+    //   - name: string (required, 1-100 chars)
+    //   - message: string (required, 1-1000 chars)
+    //   - createdAt: string (required, ISO 8601)
+    //
+    // Document: stats/engagement
+    // Fields:
+    //   - visits: number (optional, increment only)
+    //   - likes: number (optional, increment only)
+    //   - loves: number (optional, increment only)
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isValidString(val, min, max) {
+      return val is string && val.size() >= min && val.size() <= max;
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string &&
+        dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    // Guestbook Rules
+    match /guestbook/{messageId} {
+      // Allow anyone to read messages
+      allow read: if true;
+      
+      // Allow anyone to create a message with validation
+      allow create: if 
+        isValidString(request.resource.data.name, 1, 100) &&
+        isValidString(request.resource.data.message, 1, 1000) &&
+        isValidDateString(request.resource.data.createdAt) &&
+        request.resource.data.keys().hasAll(['name', 'message', 'createdAt']) &&
+        request.resource.data.keys().hasOnly(['name', 'message', 'createdAt']);
+        
+      // No updates or deletes for guests
+      allow update, delete: if false;
+    }
+
+    // Stats Rules
+    match /stats/engagement {
+      // Allow anyone to read stats
+      allow read: if true;
+      
+      // Allow anyone to increment stats
+      allow write: if 
+        request.resource.data.keys().hasAny(['visits', 'likes', 'loves']) &&
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['visits']) ||
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']) ||
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['loves'])) &&
+        (
+          (!('visits' in request.resource.data) || request.resource.data.visits >= (resource.data.visits || 0)) &&
+          (!('likes' in request.resource.data) || request.resource.data.likes >= (resource.data.likes || 0)) &&
+          (!('loves' in request.resource.data) || request.resource.data.loves >= (resource.data.loves || 0))
+        );
+    }
+  }
+}

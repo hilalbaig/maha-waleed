@@ -1,0 +1,54 @@
+{
+  "entities": {
+    "GuestbookMessage": {
+      "title": "GuestbookMessage",
+      "description": "A message left by a guest in the wedding guestbook.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the guest."
+        },
+        "message": {
+          "type": "string",
+          "description": "The message content."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the message was created."
+        }
+      },
+      "required": ["name", "message", "createdAt"]
+    },
+    "EngagementStats": {
+      "title": "EngagementStats",
+      "description": "Engagement statistics for the invitation.",
+      "type": "object",
+      "properties": {
+        "visits": {
+          "type": "number",
+          "description": "Number of visits."
+        },
+        "likes": {
+          "type": "number",
+          "description": "Number of likes."
+        },
+        "loves": {
+          "type": "number",
+          "description": "Number of loves."
+        }
+      }
+    }
+  },
+  "firestore": {
+    "/guestbook/{messageId}": {
+      "schema": "GuestbookMessage",
+      "description": "Collection of guestbook messages."
+    },
+    "/stats/engagement": {
+      "schema": "EngagementStats",
+      "description": "Document storing engagement statistics."
+    }
+  }
+}
