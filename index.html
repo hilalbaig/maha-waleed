@@ -47,8 +47,8 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Framer Motion (UMD name is Motion) -->
-    <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
+    <!-- Framer Motion (Using a stable UMD version) -->
+    <script src="https://unpkg.com/framer-motion@6.5.1/dist/framer-motion.js"></script>
 
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@0.263.0/dist/umd/lucide.min.js"></script>
@@ -56,9 +56,9 @@
     <!-- Canvas Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
-    <!-- Firebase Compat -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <!-- Firebase v9 Compat (Supports named databases) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Great+Vibes&family=Montserrat:wght@100;200;300;400;500;600;700;800;900&display=swap');
@@ -68,6 +68,7 @@
             color: #1a1a1a;
             -webkit-font-smoothing: antialiased;
             margin: 0;
+            padding: 0;
         }
 
         .custom-scrollbar::-webkit-scrollbar {
@@ -86,15 +87,26 @@
 </head>
 <body class="bg-paper text-forest antialiased min-h-screen">
     <div id="root">
-        <div style="display: flex; justify-content: center; align-items: center; height: 100vh; font-family: serif; color: #D4AF37;">
-            Loading Invitation...
+        <div id="loading-screen" style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; font-family: serif; color: #D4AF37; background: #f5f2ed;">
+            <div style="font-size: 2rem; margin-bottom: 1rem;">Waleed & Maha</div>
+            <div style="font-size: 1rem; letter-spacing: 0.2em; opacity: 0.6;">LOADING INVITATION...</div>
+            <div id="error-display" style="margin-top: 2rem; color: #ef4444; font-family: monospace; font-size: 0.8rem; max-width: 80%; text-align: center;"></div>
         </div>
     </div>
 
     <script type="text/babel">
+        // Error handling for the script
+        window.onerror = function(message, source, lineno, colno, error) {
+            const display = document.getElementById('error-display');
+            if (display) display.innerHTML = `Error: ${message}<br/>at ${source}:${lineno}`;
+            return false;
+        };
+
         const { useState, useEffect, useRef, useMemo } = React;
-        // Framer Motion UMD exposes 'Motion'
-        const { motion, AnimatePresence } = window.Motion || window.FramerMotion || { motion: (props) => <div {...props} />, AnimatePresence: ({children}) => children };
+        
+        // Framer Motion UMD access
+        const motion = window.Motion.motion;
+        const AnimatePresence = window.Motion.AnimatePresence;
 
         // --- FIREBASE CONFIG ---
         const firebaseConfig = {
@@ -109,13 +121,11 @@
         const firestoreDatabaseId = "ai-studio-f57fcc4b-b821-4cc3-b8b2-f87d893542df";
 
         // Initialize Firebase
-        let app;
         if (!firebase.apps.length) {
-            app = firebase.initializeApp(firebaseConfig);
-        } else {
-            app = firebase.app();
+            firebase.initializeApp(firebaseConfig);
         }
-        const db = app.firestore(firestoreDatabaseId);
+        // Use the named database
+        const db = firebase.app().firestore(firestoreDatabaseId);
 
         // --- UTILS ---
         const cn = (...classes) => classes.filter(Boolean).join(' ');
@@ -126,32 +136,38 @@
             
             useEffect(() => {
                 if (iconRef.current && window.lucide) {
-                    // Create a temporary element to host the icon
-                    const temp = document.createElement('div');
-                    temp.innerHTML = `<i data-lucide="${name}"></i>`;
-                    window.lucide.createIcons({
-                        icons: { [name]: window.lucide.icons[name] },
-                        attrs: {
-                            stroke: 'currentColor',
-                            'stroke-width': 2,
-                            'stroke-linecap': 'round',
-                            'stroke-linejoin': 'round',
-                            width: size,
-                            height: size,
-                            class: className
-                        },
-                        nameAttr: 'data-lucide'
-                    });
-                    // This is a bit hacky for React, but works for standalone
-                    const svg = temp.querySelector('svg');
-                    if (svg && iconRef.current) {
+                    const iconData = window.lucide.icons[name];
+                    if (iconData) {
+                        // Clear existing content
                         iconRef.current.innerHTML = '';
+                        
+                        // Create SVG manually to be safe
+                        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                        svg.setAttribute("width", size);
+                        svg.setAttribute("height", size);
+                        svg.setAttribute("viewBox", "0 0 24 24");
+                        svg.setAttribute("fill", "none");
+                        svg.setAttribute("stroke", "currentColor");
+                        svg.setAttribute("stroke-width", "2");
+                        svg.setAttribute("stroke-linecap", "round");
+                        svg.setAttribute("stroke-linejoin", "round");
+                        svg.setAttribute("class", `lucide lucide-${name} ${className}`);
+                        
+                        // Add paths from lucide data
+                        iconData[2].forEach(([tag, attrs]) => {
+                            const element = document.createElementNS("http://www.w3.org/2000/svg", tag);
+                            Object.entries(attrs).forEach(([key, value]) => {
+                                element.setAttribute(key, value);
+                            });
+                            svg.appendChild(element);
+                        });
+                        
                         iconRef.current.appendChild(svg);
                     }
                 }
             }, [name, size, className]);
 
-            return <span ref={iconRef} className={cn("inline-block", className)} style={{ width: size, height: size }}></span>;
+            return <span ref={iconRef} className={cn("inline-block", className)} style={{ width: size, height: size, lineHeight: 0 }}></span>;
         };
 
         // --- CONSTANTS ---
